@@ -27,3 +27,6 @@ It's recommended to schedule the task at once per minute. Once you have successf
 3. The script works on Dec 30, 2016. It is not guaranteed to be functional any more if 12306.cn changes its API.
 
 
+## To improve
+1. Add station code mapping json.
+2. Introduce more seat type code, especially for high speed rail way.
