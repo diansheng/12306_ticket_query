@@ -8,7 +8,7 @@ import requests.packages.urllib3
 requests.packages.urllib3.disable_warnings()
 
 
-start="JXB";end="HBB";date="2017-01-21";
+start="HBB";end="JXB";date="2018-02-13";
 """
 representation for seat type
 wz: null seat, standing ticket
@@ -18,8 +18,11 @@ yw: hard bed, normal bed ticket
 rw: soft bed, premium bed ticket
 """
 trains = {
-	'K7076':('yz','rz','yw','rw'),
-	'K7028':('yz','rz','yw','rw'),
+	# 'K7076':('yz','rz','yw','rw'),
+	# 'K7028':('yz','rz','yw','rw'),
+	'K39':('yz','rz','yw','rw'),
+	'K7173':('yz','rz','yw','rw'),
+	'K7081':('yz','rz','yw','rw'),
 }
 
 
@@ -56,34 +59,47 @@ Return: http response raw message
 def send_query(date, start, end):
 	resp = None
 	try:
-		resp=requests.get("http://www.12306.cn/opn/leftTicket/queryA?leftTicketDTO.train_date={date}&leftTicketDTO.from_station={start}&leftTicketDTO.to_station={to}&purpose_codes=ADULT".format(date=date,start=start,to=end), verify='srca.cer.pem')
+		url = "https://kyfw.12306.cn/otn/leftTicket/queryZ?leftTicketDTO.train_date={date}&leftTicketDTO.from_station={start}&leftTicketDTO.to_station={to}&purpose_codes=ADULT".format(date=date,start=start,to=end)
+		resp=requests.get(url, verify='srca.cer.pem')
+		# resp=requests.get("http://www.12306.cn/opn/leftTicket/queryA?leftTicketDTO.train_date={date}&leftTicketDTO.from_station={start}&leftTicketDTO.to_station={to}&purpose_codes=ADULT".format(date=date,start=start,to=end), verify='srca.cer.pem')
 		resp.encoding = 'utf-8'
 		status = (resp.status_code == 200 and 'query sent success') or 'query sent failed'
+		print 'response: '
 		print status
+		# print resp.text
 	except requests.exceptions.ConnectionError:
 		print 'connection failed'
 		traceback.print_exc()
 		return None
 	return resp
 
+
+def has_vacancy_train(entry):
+	seats = entry.split('|')
+	# if any desired seat available
+	return has_vacancy(seats[23]) \
+		and has_vacancy(seats[28]) \
+		and has_vacancy(seats[29]) \
+		and has_vacancy(seats[26])	# null seat
+
+
+def has_vacancy(seat):
+	# regex to test if a value is a digit
+	is_digit_pattern = re.compile("\d+")
+	return seat.encode('utf-8')=='有' \
+		or is_digit_pattern.match(seat.encode('utf-8'))	# check if the value of number is a digit
+
+
 def main():
 	msg=u''
 	resp = send_query(date, start, end)
-	data=json.loads(resp.text)
-	# regex to test if a value is a digit
-	is_digit_pattern = re.compile("\d+")
+	data=json.loads(resp.text)['data']
+	print trains.keys()
 	# loop through each train returned
-	for train in data['data']:
-		s = train["queryLeftNewDTO"]
-		str = u'{0}: from {1} to {2}; null seat:{3} hard seat:{4} soft seat:{5} hard bed:{6} soft bed:{7}'.format(
-			s['station_train_code'],s['start_time'],s['arrive_time'],s['wz_num'],s['yz_num'],s['rz_num'],s['yw_num'],s['rw_num'])
-		print str.encode('utf-8')
-		# if any desired seat available
-		if s['station_train_code'] in trains:
-			for seat in trains[s['station_train_code']]:
-				num = s[seat+'_num'].encode('utf-8')
-				if is_digit_pattern.match(num) :  # check if the value of number is a digit
-					msg += u'train {} is available on {} from {} to {} \n'.format(s['station_train_code'],date, start, end)
+	for train in data['result']:
+		for key in trains.keys():
+			if key in train and has_vacancy_train(train):
+				msg += u'train {} is available on {} from {} to {} \n'.format(key, date, start, end)
 	if len(msg)>0:
 		print msg
 		send_email(msg)
