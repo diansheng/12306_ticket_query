@@ -78,9 +78,9 @@ def has_vacancy_train(entry):
 	seats = entry.split('|')
 	# if any desired seat available
 	return has_vacancy(seats[23]) \
-		and has_vacancy(seats[28]) \
-		and has_vacancy(seats[29]) \
-		and has_vacancy(seats[26])	# null seat
+		or has_vacancy(seats[28]) \
+		or has_vacancy(seats[29]) \
+		or has_vacancy(seats[26])	# null seat
 
 
 def has_vacancy(seat):
